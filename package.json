@@ -20,7 +20,11 @@
     "test": "vitest",
     "test:e2e": "playwright test",
     "lint": "biome check --write",
-    "prepare": "simple-git-hooks"
+    "prepare": "simple-git-hooks",
+    "i18n:extract": "node scripts/i18n-extract.mjs",
+    "i18n:validate": "node scripts/i18n-validate.mjs",
+    "i18n:merge": "node scripts/i18n-merge.mjs",
+    "i18n:terms": "node scripts/i18n-sync-termbase.mjs"
   },
   "simple-git-hooks": {
     "pre-commit": "npm run lint"

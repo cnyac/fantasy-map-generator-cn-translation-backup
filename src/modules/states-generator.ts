@@ -20,6 +20,50 @@ declare global {
   var States: StatesModule;
 }
 
+// 读取当前语言区域（同步；不依赖 i18n.js 异步加载）
+function isNonEnglishLocale(): boolean {
+  try {
+    const q = new URLSearchParams(location.search).get("locale");
+    const locale = q ?? localStorage.getItem("locale") ?? "en";
+    return locale !== "en";
+  } catch {
+    return false;
+  }
+}
+
+// 汉化（fork-only）：国家「封号」的考据中文译名，仅用于中文模式下拼装国名全称。
+// 这里是「称号义」（共和国/王国），与术语表里的「政体类别义」（共和制/君主制）刻意分开。
+const STATE_FORM_CN: Record<string, string> = {
+  // 君主制
+  Duchy: "公国", "Grand Duchy": "大公国", Principality: "亲王国", Kingdom: "王国", Empire: "帝国",
+  Marches: "边区", Dominion: "自治领", Protectorate: "保护国", Khanate: "汗国", Beylik: "贝伊国",
+  Tsardom: "沙皇国", Khaganate: "可汗国", Shogunate: "幕府", Caliphate: "哈里发国", Emirate: "埃米尔国",
+  Despotate: "专制君主国", Ulus: "兀鲁思", Horde: "游牧汗国", Satrapy: "总督辖区",
+  // 共和制
+  Republic: "共和国", Federation: "联邦", "Trade Company": "贸易公司", "Most Serene Republic": "至尊共和国",
+  Oligarchy: "寡头国", Tetrarchy: "四头政体", Triumvirate: "三头政体", Diarchy: "二头政体",
+  Junta: "军政府", "Free City": "自由城邦", "City-state": "城邦",
+  // 联合体
+  Union: "联盟", League: "同盟", Confederation: "邦联", "United Kingdom": "联合王国",
+  "United Republic": "联合共和国", "United Provinces": "联合省", Commonwealth: "共和联邦", Heptarchy: "七国联盟",
+  // 神权制
+  Theocracy: "神权国", Brotherhood: "兄弟会", Thearchy: "神治国", See: "圣座", "Holy State": "圣国",
+  Diocese: "教区", Bishopric: "主教国", Eparchy: "东正教教区", Exarchate: "总主教辖区",
+  Patriarchate: "牧首区", Imamah: "伊玛目国",
+  // 无政府
+  "Free Territory": "自由地区", Council: "议会国", Commune: "公社", Community: "社区"
+};
+
+// 把封号译成中文；处理 "Divine X"（神圣 X）前缀；找不到返回 null
+function localizeStateForm(formName: string): string | null {
+  if (STATE_FORM_CN[formName]) return STATE_FORM_CN[formName];
+  if (formName.startsWith("Divine ")) {
+    const base = STATE_FORM_CN[formName.slice(7)];
+    if (base) return "神圣" + base;
+  }
+  return null;
+}
+
 interface Campaign {
   name: string;
   start: number;
@@ -695,6 +739,14 @@ class StatesModule {
       "Marches"
     ];
     if (!state.formName) return state.name;
+
+    // 汉化（fork-only）：中文模式下用「专名 + 封号」拼装，去掉 "of"（专名是音素生成的奇幻名，不译）。
+    // 直接查 URL/?locale= 或 localStorage，不依赖 i18n.js（后者是最末 defer，生成时可能未就绪）。
+    if (isNonEnglishLocale()) {
+      const cnForm = localizeStateForm(state.formName);
+      if (cnForm) return state.name ? `${state.name} ${cnForm}` : cnForm;
+    }
+
     if (!state.name && state.formName) return `The ${state.formName}`;
     const adjName = adjForms.includes(state.formName) && !/-| /.test(state.name);
     return adjName ? `${getAdjective(state.name)} ${state.formName}` : `${state.formName} of ${state.name}`;

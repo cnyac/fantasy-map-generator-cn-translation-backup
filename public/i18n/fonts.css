@@ -1,0 +1,30 @@
+/* 汉化字体覆盖（fork-only / additive）
+   西文 → Times New Roman；中文 → 思源宋体；全局生效。
+   原理：重定义 FMG 的字体 CSS 变量。一条 font-family 里 Times New Roman 排首位，
+   拉丁字符用它；中日韩字符它没有字形，自动落到思源宋体。图标字体（'icons'）是另一套
+   字体、加在 ::before 上，不受影响。
+   思源宋体在不同安装包下家族名不一（Adobe=Source Han Serif SC / Google=Noto Serif CJK SC /
+   中文名=思源宋体），故列多个别名，浏览器取本机已装的第一个。 */
+
+:root {
+  --cjk-serif: "Source Han Serif SC", "Source Han Serif CN", "思源宋体 CN", "思源宋体",
+    "Noto Serif CJK SC", "Songti SC", "SimSun";
+  --serif: "Times New Roman", var(--cjk-serif), serif;
+  --sans-serif: "Times New Roman", var(--cjk-serif), serif;
+  /* 数字/代码输入框保持等宽对齐：Consolas 走西文数字，中日韩字仍落思源宋体 */
+  --monospace: Consolas, var(--cjk-serif), monospace;
+}
+
+/* 兜底：默认字体的元素也走宋体栈（不加 !important，避免影响图标与特例） */
+body {
+  font-family: var(--serif);
+}
+
+/* 地图标签（SVG 文字）也统一为 Times New Roman + 思源宋体。
+   字体在 FMG 里是设在 <g> 上的 SVG 呈现属性，作者 CSS 优先级高于它，故能覆盖；
+   用 !important 兼容个别内联样式。只命中 <text>/<tspan>，不碰图标/纹章（它们是 path/use）。
+   注：这会覆盖样式编辑器里的标签字体选择——要全覆盖即如此。 */
+#viewbox text,
+#viewbox tspan {
+  font-family: var(--serif) !important;
+}

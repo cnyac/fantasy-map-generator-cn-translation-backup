@@ -10,3 +10,13 @@
 /_bmad-output
 .github/agents/bmad-*
 .github/prompts/bmad-*
+
+# i18n 汉化：临时/生成产物（字典与脚本本身要入库）
+.vite-dev.log
+/i18n-translation/batches
+/i18n-translation/manifest.json
+/i18n-translation/runtime-missing.json
+/i18n-translation/_pipeline-test.json
+/i18n-translation/preview-*.png
+/i18n-translation/returns/*.json
+/i18n-translation/returns/_archive

@@ -2,6 +2,34 @@ import Alea from "alea";
 import { max } from "d3";
 import { ensureEl, gauss, generateSeed, getMixedColor, getPolesOfInaccessibility, P, rand, rw } from "../utils";
 
+// 汉化（fork-only）：省级地名「称号」考据中文译名，中文模式下拼装「专名 + 称号」格式。
+const PROVINCE_FORM_CN: Record<string, string> = {
+  County: "郡", Earldom: "伯爵领", Shire: "郡", Landgrave: "方伯领", Margrave: "边疆伯领",
+  Barony: "男爵领", Captaincy: "都尉领", Seneschalty: "总管辖区",
+  Province: "省", Department: "省", Governorate: "总督辖区", District: "区",
+  Canton: "州", Prefecture: "府", Parish: "堂区", Deanery: "教区",
+  State: "州", Republic: "共和地", Council: "议会区", Commune: "公社",
+  Community: "社区", Tribe: "部落", Territory: "领地", Land: "地",
+  Region: "地区", Clan: "氏族区", Dependency: "附属领", Area: "区域",
+  Island: "岛", Islands: "群岛", Colony: "殖民地"
+};
+
+function isNonEnglishLocale(): boolean {
+  try {
+    const q = new URLSearchParams(location.search).get("locale");
+    const locale = q ?? localStorage.getItem("locale") ?? "en";
+    return locale !== "en";
+  } catch {
+    return false;
+  }
+}
+
+function localizeProvinceFullName(name: string, formName: string): string | null {
+  if (!isNonEnglishLocale()) return null;
+  const cn = PROVINCE_FORM_CN[formName];
+  return cn ? `${name} ${cn}` : null;
+}
+
 declare global {
   var Provinces: ProvinceModule;
 }
@@ -118,7 +146,7 @@ class ProvinceModule {
         const name = nameByBurg ? stateBurgs[i].name! : Names.getState(Names.getCultureShort(c), c);
         const formName = rw(form);
         form[formName] += 10;
-        const fullName = `${name} ${formName}`;
+        const fullName = localizeProvinceFullName(name, formName) ?? `${name} ${formName}`;
         const color = getMixedColor(s.color!);
         const kinship = nameByBurg ? 0.8 : 0.4;
         const type = Burgs.getType(center, burg.port);
@@ -266,7 +294,7 @@ class ProvinceModule {
           return rw(this.forms.Wild);
         })();
 
-        const fullName = `${name} ${formName}`;
+        const fullName = localizeProvinceFullName(name!, formName) ?? `${name} ${formName}`;
 
         const dominion = colony ? P(0.95) : singleIsle || isleGroup ? P(0.7) : P(0.3);
         const kinship = dominion ? 0 : 0.4;
@@ -329,3 +357,7 @@ class ProvinceModule {
 }
 
 window.Provinces = new ProvinceModule();
+
+// 汉化（fork-only）：供 provinces-editor.js 调用，保证手动新增省份也走中文拼装逻辑。
+(window as any).localizeProvinceFullName = (name: string, formName: string): string =>
+  localizeProvinceFullName(name, formName) ?? `${name} ${formName}`;

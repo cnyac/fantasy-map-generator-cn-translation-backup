@@ -1043,7 +1043,9 @@ function editProvinces() {
     const c = cells.culture[center];
     const name = burg ? pack.burgs[burg].name : Names.getState(Names.getCultureShort(c), c);
     const formName = oldProvince ? provinces[oldProvince].formName : "Province";
-    const fullName = name + " " + formName;
+    const fullName = typeof window.localizeProvinceFullName === "function"
+      ? window.localizeProvinceFullName(name, formName)
+      : name + " " + formName;
     const stateColor = pack.states[state].color;
     const rndColor = getRandomColor();
     const color = stateColor[0] === "#" ? d3.color(d3.interpolate(stateColor, rndColor)(0.2)).hex() : rndColor;
