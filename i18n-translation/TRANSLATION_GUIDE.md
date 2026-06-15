@@ -37,6 +37,34 @@
    - 若原文是纯单位/符号标记（如 `"°C ="` / `"km²"`），保留原样（`target` 与 `source` 相同）或根据中文习惯调整（如 `"°C ="` → `"°C ="`）。
    - 若原文是奇幻专有名词（地名、文化名、神灵名——通常首字母大写、查不到真实含义），**不翻译**，`target` 填与 `source` 相同的原文。
 
+8. **贸易路线名**（`context` 含"贸易路线名"的条目）：格式固定为 `{奇幻专名} {路线类型词}`。
+   - **专名部分**（空格前的词）：程序随机生成的奇幻地名，**原样保留，不翻译、不转写**。
+   - **路线类型词**（空格后的词）：按下表翻译：
+
+   | 英文 | 中文 |
+   |------|------|
+   | trail | 小径 |
+   | pass | 山口 |
+   | sea route | 航路 |
+   | seaway | 航道 |
+   | road | 大道 |
+   | track | 辙路 |
+   | path | 小道 |
+   | lane | 水道 |
+   | highway | 通衢 |
+   | route | 商路 |
+   | passage | 隘道 |
+
+   例：`"Abenish trail"` → `"Abenish 小径"`；`"Bolisan sea route"` → `"Bolisan 航路"`。
+
+   - **形容词修饰词**（如 `Ancient/Ghost/Imperial/Golden/Mystic/Flame/Arcane/Enchanted/Dusk/Ebon/Ember/Glowing/Falcon/Aurora/Halcyon/Amethyst` 等前置英文形容词）可翻译，但专名仍保留。
+     例：`"Golden sea route"` → `"黄金航路"`；`"Ghost pass"` → `"幽灵山口"`；`"Mystic route"` → `"神秘商路"`。
+
+9. **军团名**（`context` 含"军团名"）：序数词（`1st/2nd/3rd`）保留阿拉伯数字，括号内专名保留，`Regiment` → `团`。
+   例：`"1st (Amagana) Regiment"` → `"第1（Amagana）团"`。
+
+10. **纯专有名词**（如仅含大写名称或城市列表）：`target` 填与 `source` 相同的原文。
+
 ### 输出格式
 - **只输出 JSON**，与输入同结构，`target` 全部填好。
 - **不要**加任何解释、Markdown 代码块标记之外的文字、注释。
