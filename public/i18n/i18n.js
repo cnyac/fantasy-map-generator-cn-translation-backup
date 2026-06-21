@@ -79,6 +79,56 @@
     Era: "纪元"
   };
 
+  const RELIGION_FORM_CN = {
+    Beliefs: "信仰",
+    Faith: "信仰",
+    Church: "教会",
+    Druidism: "德鲁伊教",
+    Deities: "众神信仰",
+    Gods: "众神信仰",
+    Pantheon: "万神殿",
+    Spirits: "精魂信仰",
+    Idols: "偶像崇拜",
+    Ancestors: "祖灵信仰",
+    Forefathers: "先祖信仰",
+    Shamanism: "萨满教",
+    Animism: "万物有灵论",
+    Totemism: "图腾崇拜",
+    Polytheism: "多神教",
+    Monotheism: "一神教",
+    Heresy: "异端",
+    Sect: "教派",
+    Cult: "崇拜",
+    Occultism: "秘教",
+    Mysticism: "秘教",
+    Worship: "崇拜",
+    Religion: "宗教",
+    Arcanum: "秘仪",
+    Order: "教团"
+  };
+
+  const BURG_GROUP_CN = {
+    capital: "首都",
+    city: "城市",
+    town: "城镇",
+    village: "村庄",
+    port: "港口",
+    generic: "城镇"
+  };
+
+  const GEOGRAPHIC_TYPE_CN = {
+    River: "河",
+    Creek: "溪",
+    Brook: "溪流",
+    Stream: "溪流",
+    lake: "湖",
+    freshwater: "淡水湖",
+    salt: "咸水湖",
+    frozen: "冰湖",
+    lava: "熔岩湖",
+    dry: "干湖"
+  };
+
   const PROPER_NAME_SKIP = new Set([
     "Azgaar", "Fantasy", "Map", "Generator", "Google", "Discord", "Reddit",
     "Patreon", "Facebook", "Twitter", "Pinterest", "YouTube", "Watabou"
@@ -97,6 +147,7 @@
     out = out.replace(/\b([A-Z][A-Za-z'-]{1,})\b/g, (token, word) => {
       if (PROPER_NAME_SKIP.has(word)) return token;
       if (CULTURE_WORD_CN[word]) return CULTURE_WORD_CN[word];
+      if (RELIGION_FORM_CN[word]) return RELIGION_FORM_CN[word];
       const dictHit = state.dict[word] || state.namesDict[word];
       if (dictHit) return dictHit;
       const cn = translateName(word);
@@ -112,6 +163,7 @@
     return text.replace(/\b([A-Z][A-Za-z'-]{1,})\b/g, (token, word) => {
       if (PROPER_NAME_SKIP.has(word)) return token;
       if (CULTURE_WORD_CN[word]) return CULTURE_WORD_CN[word];
+      if (RELIGION_FORM_CN[word]) return RELIGION_FORM_CN[word];
       const dictHit = state.dict[word] || state.namesDict[word];
       if (dictHit) return dictHit;
       const cn = translateName(word);
@@ -119,11 +171,63 @@
     });
   }
 
+  function translateReligionName(text) {
+    const key = norm(text);
+    if (!key) return text;
+    const exact = state.dict[key] || state.namesDict[key];
+    if (exact) return exact;
+
+    const forms = Object.keys(RELIGION_FORM_CN).sort((a, b) => b.length - a.length);
+    for (const form of forms) {
+      const ofThe = new RegExp("^" + form.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + " of the (.+)$").exec(key);
+      if (ofThe) return `${translateNamePhrase(ofThe[1])}的${RELIGION_FORM_CN[form]}`;
+    }
+
+    for (const form of forms) {
+      if (key.endsWith(" " + form)) {
+        const root = key.slice(0, -(form.length + 1));
+        return translateNamePhrase(root) + RELIGION_FORM_CN[form];
+      }
+    }
+
+    const ism = key.match(/^(.{3,})ism$/);
+    if (ism) return translateNamePhrase(ism[1]) + "教";
+
+    return translateNamePhrase(key);
+  }
+
   function translateByPattern(text) {
-    // 0. 地图/宗教悬停提示："Folk religion: Eldar (Elfish) Beliefs"
-    const religionMatch = text.match(/^(Folk religion|Organized religion|Cult|Heresy): (.+) Beliefs$/);
+    // 0. 地图悬停提示：宗教、城镇、河流等动态格式
+    const religionMatch = text.match(/^(Folk religion|Organized religion|Cult|Heresy): (.+)$/);
     if (religionMatch) {
-      return `${RELIGION_TYPE_CN[religionMatch[1]] || religionMatch[1]}：${translateNamePhrase(religionMatch[2])} 信众`;
+      return `${RELIGION_TYPE_CN[religionMatch[1]] || religionMatch[1]}：${translateReligionName(religionMatch[2])}`;
+    }
+
+    let m = text.match(/^(.+?) (capital|city|town|village|port|generic)\. Population: ([^.]+)\. Click to edit$/);
+    if (m) {
+      return `${translateNamePhrase(m[1])}${BURG_GROUP_CN[m[2]] || m[2]}。人口：${m[3]}。点击编辑`;
+    }
+
+    m = text.match(/^(.+?) (River|Creek|Brook|Stream)\. Click to edit$/);
+    if (m) {
+      return `${translateNamePhrase(m[1])}${GEOGRAPHIC_TYPE_CN[m[2]] || m[2]}。点击编辑`;
+    }
+
+    m = text.match(/^(.+?) (lake|freshwater|salt|frozen|lava|dry) lake\. Click to edit$/);
+    if (m) {
+      return `${translateNamePhrase(m[1])}${GEOGRAPHIC_TYPE_CN[m[2]] || "湖"}。点击编辑`;
+    }
+
+    m = text.match(/^(.+)\. Click to edit the Route$/);
+    if (m) return `${translateNamePhrase(m[1])}。点击编辑路线`;
+
+    m = text.match(/^([A-Z][A-Za-z' -]{1,})\. Click to edit$/);
+    if (m) return `${translateNamePhrase(m[1])}。点击编辑`;
+
+    m = text.match(/^Click to edit the (Label|Route|Relief Icon|Marker|Burg|Ice)$/);
+    if (m) {
+      const nouns = {Label: "标签", Route: "路线", "Relief Icon": "地形图标", Marker: "标记", Burg: "城镇", Ice: "冰"};
+      return `点击编辑${nouns[m[1]] || m[1]}`;
     }
 
     // 1. 外交气泡（两种格式）
@@ -149,7 +253,7 @@
 
     // 2. 人口气泡（分号格式，来自 states/provinces/zones 编辑器）
     // [^;]+? 而非 [^;.]+?：值本身可含小数点（如 "6.7K"）
-    let m = text.match(/^Total population: ([^;]+); Rural population: ([^;]+); Urban population: ([^;]+?)(?:\. (Click to change|Click to edit))?$/);
+    m = text.match(/^Total population: ([^;]+); Rural population: ([^;]+); Urban population: ([^;]+?)(?:\. (Click to change|Click to edit))?$/);
     if (m) {
       const suffix = m[4] ? (m[4] === "Click to edit" ? "。点击编辑" : "。点击修改") : "";
       return `总人口：${m[1].trim()}；农村人口：${m[2].trim()}；城市人口：${m[3].trim()}${suffix}`;
