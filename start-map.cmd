@@ -1,0 +1,5 @@
+@echo off
+setlocal
+cd /d "%~dp0"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $root='%~dp0'; $noBrowser=$env:FMG_NO_BROWSER -eq '1'; Set-Location -LiteralPath $root; $url='http://localhost:5173/Fantasy-Map-Generator/?locale=zh-CN'; function Test-Ready { try { $r=Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 2; return ($r.StatusCode -ge 200 -and $r.StatusCode -lt 500) } catch { return $false } }; if (-not (Get-Command node -ErrorAction SilentlyContinue)) { throw 'Node.js was not found in PATH.' }; if (-not (Get-Command npm -ErrorAction SilentlyContinue)) { throw 'npm was not found in PATH.' }; if (-not (Test-Path -LiteralPath (Join-Path $root 'node_modules'))) { npm install }; if (-not (Test-Ready)) { Start-Process -FilePath 'cmd.exe' -ArgumentList @('/d','/k','cd /d \"' + $root + '\" && npm run dev') -WindowStyle Normal }; $deadline=(Get-Date).AddSeconds(60); while ((Get-Date) -lt $deadline) { if (Test-Ready) { if (-not $noBrowser) { Start-Process $url }; Write-Host ('Ready: ' + $url); exit 0 }; Start-Sleep -Milliseconds 500 }; throw 'Timed out waiting for http://localhost:5173/'"
+pause

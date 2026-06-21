@@ -15,6 +15,7 @@
   "main": "main.js",
   "scripts": {
     "dev": "vite",
+    "dev:zh": "vite --host localhost --open /Fantasy-Map-Generator/?locale=zh-CN",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "vitest",
