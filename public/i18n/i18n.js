@@ -264,6 +264,134 @@
     Obscure: "幽隐"
   };
 
+  const NAME_WORD_CN = {
+    ...ROUTE_WORD_CN,
+    Black: "黑",
+    White: "白",
+    Red: "赤",
+    Blue: "蓝",
+    Green: "绿",
+    Grey: "灰",
+    Gray: "灰",
+    Dark: "暗",
+    Light: "光",
+    Deep: "深",
+    Clear: "清",
+    Smooth: "平滑",
+    Steep: "峻",
+    Little: "小",
+    Small: "小",
+    North: "北",
+    South: "南",
+    East: "东",
+    West: "西",
+    Upper: "上",
+    Lower: "下",
+    Stone: "石",
+    Rock: "岩",
+    Cliff: "崖",
+    Crag: "峭岩",
+    Hill: "丘",
+    Peak: "峰",
+    Mountain: "山",
+    Glen: "谷",
+    Dale: "谷",
+    Valley: "谷",
+    Vale: "谷",
+    Field: "原",
+    Meadow: "草甸",
+    Plains: "原",
+    Forest: "林",
+    Wood: "林",
+    Woods: "林",
+    Grove: "林",
+    Pine: "松",
+    Oak: "橡",
+    Moss: "苔",
+    Thorn: "荆棘",
+    Rose: "蔷薇",
+    Grass: "草",
+    Water: "水",
+    River: "河",
+    Lake: "湖",
+    Sea: "海",
+    Ocean: "洋",
+    Bay: "湾",
+    Gulf: "湾",
+    Coast: "岸",
+    Shore: "岸",
+    Brook: "溪",
+    Creek: "溪",
+    Stream: "溪",
+    Spring: "泉",
+    Well: "泉",
+    Falls: "瀑",
+    Fall: "瀑",
+    Mire: "沼",
+    Marsh: "沼",
+    Swamp: "沼",
+    Mud: "泥",
+    Dust: "尘",
+    Salt: "盐",
+    Snow: "雪",
+    Ice: "冰",
+    Winter: "冬",
+    Autumn: "秋",
+    Summer: "夏",
+    Springtime: "春",
+    Castle: "城堡",
+    Keep: "堡",
+    Fort: "堡",
+    Ford: "渡",
+    Bridge: "桥",
+    Gate: "门",
+    Wall: "墙",
+    Watch: "哨",
+    Guard: "卫",
+    Shield: "盾",
+    Helm: "盔",
+    Hand: "手",
+    Cross: "十字",
+    Crown: "冠",
+    Hall: "厅",
+    Hollow: "谷",
+    House: "屋",
+    Home: "居",
+    Haven: "港",
+    Harbor: "港",
+    Port: "港",
+    Town: "镇",
+    City: "城",
+    Bury: "堡",
+    Burg: "堡",
+    Borough: "堡",
+    Shire: "郡",
+    Land: "地",
+    Fair: "集",
+    Market: "市",
+    Mill: "磨坊",
+    Mine: "矿",
+    Dragon: "龙",
+    Wolf: "狼",
+    Bear: "熊",
+    Lion: "狮",
+    Swan: "天鹅",
+    Hound: "猎犬",
+    Dog: "犬",
+    Deer: "鹿",
+    Crow: "鸦",
+    Raven: "渡鸦",
+    Eagle: "鹰",
+    Falcon: "猎鹰",
+    Pearl: "珍珠",
+    Gold: "金",
+    Golden: "黄金",
+    Silver: "银",
+    Iron: "铁",
+    Copper: "铜",
+    Bronze: "青铜"
+  };
+
   const PROPER_NAME_SKIP = new Set([
     "Azgaar", "Fantasy", "Map", "Generator", "Google", "Discord", "Reddit",
     "Patreon", "Facebook", "Twitter", "Pinterest", "YouTube", "Watabou"
@@ -272,7 +400,7 @@
   function translateNamePhrase(text) {
     const key = norm(text);
     if (!key) return text;
-    const exact = state.dict[key] || state.namesDict[key] || CULTURE_WORD_CN[key];
+    const exact = state.namesDict[key] || CULTURE_WORD_CN[key];
     if (exact) return exact;
 
     let out = key.replace(/\(([^)]+)\)/g, (_, inner) => {
@@ -283,8 +411,8 @@
       if (PROPER_NAME_SKIP.has(word)) return token;
       if (CULTURE_WORD_CN[word]) return CULTURE_WORD_CN[word];
       if (RELIGION_FORM_CN[word]) return RELIGION_FORM_CN[word];
-      if (ROUTE_WORD_CN[word]) return ROUTE_WORD_CN[word];
-      const dictHit = state.dict[word] || state.namesDict[word];
+      if (NAME_WORD_CN[word]) return NAME_WORD_CN[word];
+      const dictHit = state.namesDict[word];
       if (dictHit) return dictHit;
       const cn = translateName(word);
       return cn || token;
@@ -300,8 +428,8 @@
       if (PROPER_NAME_SKIP.has(word)) return token;
       if (CULTURE_WORD_CN[word]) return CULTURE_WORD_CN[word];
       if (RELIGION_FORM_CN[word]) return RELIGION_FORM_CN[word];
-      if (ROUTE_WORD_CN[word]) return ROUTE_WORD_CN[word];
-      const dictHit = state.dict[word] || state.namesDict[word];
+      if (NAME_WORD_CN[word]) return NAME_WORD_CN[word];
+      const dictHit = state.namesDict[word];
       if (dictHit) return dictHit;
       const cn = translateName(word);
       return cn || token;
@@ -367,6 +495,68 @@
     const s = norm(name);
     if ([...s].length <= maxLen) return s;
     return [...s].slice(0, maxLen).join("");
+  }
+
+  function translateSemanticName(word) {
+    if (!word || !/^[A-Za-z][A-Za-z'-]*$/.test(word)) return null;
+    const parts = word.split(/[-']/).filter(Boolean);
+    if (!parts.length) return null;
+
+    const translated = parts.map(part => translateSemanticPart(part));
+    if (!translated.some(item => item.semantic)) return null;
+    return translated.map(item => item.text).join("");
+  }
+
+  function translateSemanticPart(part) {
+    const roots = getSemanticRoots();
+    const lower = part.toLowerCase();
+    let i = 0;
+    const pieces = [];
+    let unknown = "";
+    let semantic = 0;
+
+    const flushUnknown = () => {
+      if (!unknown) return;
+      pieces.push({type: "unknown", value: unknown});
+      unknown = "";
+    };
+
+    while (i < lower.length) {
+      const hit = roots.find(([root]) => lower.startsWith(root, i));
+      if (hit) {
+        flushUnknown();
+        pieces.push({type: "semantic", value: hit[1]});
+        semantic++;
+        i += hit[0].length;
+      } else {
+        unknown += part[i] || "";
+        i++;
+      }
+    }
+
+    flushUnknown();
+    const hasSemantic = semantic > 0;
+    const text = pieces.map(piece => {
+      if (piece.type === "semantic") return piece.value;
+      const phonetic = phoneticTranslit(piece.value);
+      return hasSemantic ? trimPhoneticName(phonetic, 2) : phonetic;
+    }).join("");
+    return {text, semantic: hasSemantic};
+  }
+
+  let semanticRoots = null;
+  function getSemanticRoots() {
+    if (semanticRoots) return semanticRoots;
+    const roots = [];
+    for (const [word, cn] of Object.entries(NAME_WORD_CN)) roots.push([word.toLowerCase(), cn]);
+    if (state.morphemes) {
+      for (const [word, cn] of state.morphemes.prefixes || []) roots.push([word.toLowerCase(), cn]);
+      for (const [word, cn] of state.morphemes.suffixes || []) roots.push([word.toLowerCase(), cn]);
+    }
+    semanticRoots = roots
+      .filter(([root]) => root.length >= 3)
+      .sort((a, b) => b[0].length - a[0].length);
+    return semanticRoots;
   }
 
   function translateByPattern(text) {
@@ -503,6 +693,10 @@
     if (/^\.\w+$/.test(key)) return text;
     if (/^\d+°$/.test(key)) return text;
     if (/^[\w.-]+\.[a-z]{2,}(?:\/.*)?$/i.test(key)) return text;
+    if (/^[A-Z][A-Za-z'-]{1,}$/.test(key) && !PROPER_NAME_SKIP.has(key)) {
+      const named = translateName(key);
+      if (named && named !== key) return named;
+    }
     state.missing.add(key);
     return text;
   }
@@ -556,13 +750,17 @@
     const override = state.namesDict[word] || state.namesDict[norm(word)];
     if (override) return override;
 
+    // 2. 全局半意译：识别词内可理解词根，未知片段短音译
+    const semantic = translateSemanticName(word);
+    if (semantic) return semantic;
+
     const suffixes = state.morphemes.suffixes;
     const prefixes = state.morphemes.prefixes;
     let remaining = word;
     let prefixCn = "";
     let suffixCn = "";
 
-    // 2. 前缀匹配（表已按长度降序）
+    // 3. 前缀匹配（表已按长度降序）
     for (const [pat, cn] of prefixes) {
       if (remaining.length > pat.length &&
           remaining.slice(0, pat.length).toLowerCase() === pat.toLowerCase()) {
@@ -572,7 +770,7 @@
       }
     }
 
-    // 3. 后缀匹配（表已按长度降序）
+    // 4. 后缀匹配（表已按长度降序）
     // 有前缀时允许 remaining 恰好等于后缀（如 Neu+burg→新+堡）；
     // 无前缀时要求后缀前至少还有 1 个字母（避免把 "Berg" 整体视为后缀）
     for (const [pat, cn] of suffixes) {
@@ -585,12 +783,12 @@
       }
     }
 
-    // 4. 剩余部分音译
+    // 5. 剩余部分音译
     const midCn = phoneticTranslit(remaining);
     if (!midCn && !prefixCn && !suffixCn) return null;
 
-    // 5. 强制最大 5 字：超出时裁剪音译中段，保留词根前缀+后缀
-    const MAX_LEN = 5;
+    // 6. 纯音译最多 4 字；有前后缀词根时保留词根并裁剪中段
+    const MAX_LEN = prefixCn || suffixCn ? 5 : 4;
     const full = prefixCn + midCn + suffixCn;
     if (full.length <= MAX_LEN) return full;
     const budget = MAX_LEN - prefixCn.length - suffixCn.length;
@@ -619,7 +817,12 @@
     await Promise.all([
       fetch(`${BASE}locales/${locale}/morphemes.json`, {cache: "no-cache"})
         .then(r => r.ok ? r.json() : null)
-        .then(d => { if (d) state.morphemes = d; })
+        .then(d => {
+          if (d) {
+            state.morphemes = d;
+            semanticRoots = null;
+          }
+        })
         .catch(() => {}),
       fetch(`${BASE}locales/${locale}/names.json`, {cache: "no-cache"})
         .then(r => r.ok ? r.json() : null)
@@ -759,7 +962,7 @@
       const trimmed = norm(raw);
       // 单词：仅字母/连字符/撇号，首字母大写，≥2 字符
       if (/^[A-Z][a-zA-Z'-]{1,}$/.test(trimmed)) {
-        const cn = state.dict[trimmed] || translateName(trimmed);
+        const cn = state.namesDict[trimmed] || translateName(trimmed) || state.dict[trimmed];
         if (cn) {
           const lead = (raw.match(/^\s*/) || [""])[0];
           const tail = (raw.match(/\s*$/) || [""])[0];
@@ -770,7 +973,7 @@
       // 多词组合（如 "Helia Kingdom" 在同一文本节点时）：逐词翻译
       if (/^[A-Z][a-zA-Z'-]+(?:\s+[A-Z][a-zA-Z'-]+)+$/.test(trimmed)) {
         const parts = trimmed.split(/\s+/).map(w => {
-          const dictHit = state.dict[norm(w)];
+          const dictHit = state.namesDict[norm(w)];
           if (dictHit) return dictHit;
           if (/^[A-Z][a-zA-Z'-]{1,}$/.test(w)) return translateName(w) || w;
           return w;
