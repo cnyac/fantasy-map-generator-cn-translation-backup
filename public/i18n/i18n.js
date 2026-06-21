@@ -129,6 +129,141 @@
     dry: "干湖"
   };
 
+  const ROUTE_SUFFIX_CN = {
+    road: "大道",
+    route: "商路",
+    way: "大道",
+    highway: "官道",
+    trail: "小径",
+    path: "小径",
+    track: "小道",
+    pass: "隘道",
+    passage: "隘道",
+    "sea route": "航路",
+    lane: "水道",
+    seaway: "海路"
+  };
+
+  const ROUTE_WORD_CN = {
+    King: "王",
+    Queen: "女王",
+    Military: "军",
+    Old: "古",
+    New: "新",
+    Ancient: "古",
+    Royal: "皇家",
+    Imperial: "帝国",
+    Great: "大",
+    Grand: "宏伟",
+    High: "高岭",
+    Silver: "白银",
+    Dragon: "龙",
+    Shadow: "暗影",
+    Star: "星辰",
+    Mystic: "秘",
+    Whisper: "低语",
+    Eagle: "苍鹰",
+    Golden: "黄金",
+    Crystal: "水晶",
+    Enchanted: "魔法",
+    Frost: "霜",
+    Moon: "月",
+    Sun: "日",
+    Thunder: "雷霆",
+    Phoenix: "凤凰",
+    Sapphire: "蓝宝石",
+    Celestial: "天穹",
+    Wandering: "流浪",
+    Echo: "回声",
+    Twilight: "暮光",
+    Crimson: "绯红",
+    Serpent: "蛇",
+    Iron: "铁",
+    Forest: "森林",
+    Flower: "花",
+    Whispering: "低语",
+    Eternal: "永恒",
+    Frozen: "冰封",
+    Rain: "雨",
+    Luminous: "光耀",
+    Stardust: "星尘",
+    Arcane: "奥秘",
+    Glimmering: "微光",
+    Jade: "翡翠",
+    Ember: "余烬",
+    Azure: "蔚蓝",
+    Gilded: "镀金",
+    Divine: "神圣",
+    Shadowed: "暗影",
+    Cursed: "诅咒",
+    Moonlit: "月照",
+    Sable: "黑貂",
+    Everlasting: "永恒",
+    Amber: "琥珀",
+    Nightshade: "夜影",
+    Wraith: "幽灵",
+    Scarlet: "猩红",
+    Platinum: "白金",
+    Whirlwind: "旋风",
+    Obsidian: "黑曜",
+    Ethereal: "缥缈",
+    Ghost: "鬼影",
+    Spike: "尖刺",
+    Dusk: "黄昏",
+    Raven: "渡鸦",
+    Spectral: "幽魂",
+    Burning: "燃焰",
+    Verdant: "翠绿",
+    Copper: "赤铜",
+    Velvet: "绒夜",
+    Falcon: "猎鹰",
+    Enigma: "谜影",
+    Glowing: "荧光",
+    Silvered: "银光",
+    Molten: "熔火",
+    Radiant: "辉光",
+    Astral: "星界",
+    Wild: "荒野",
+    Flame: "烈焰",
+    Amethyst: "紫晶",
+    Aurora: "极光",
+    Shadowy: "幽影",
+    Solar: "太阳",
+    Lunar: "月",
+    Whisperwind: "低语风",
+    Fading: "残光",
+    Titan: "泰坦",
+    Dawn: "黎明",
+    Crystalline: "晶石",
+    Jeweled: "宝石",
+    Sylvan: "林间",
+    Twisted: "扭曲",
+    Ebon: "玄黑",
+    Thorn: "荆棘",
+    Cerulean: "天蓝",
+    Halcyon: "宁和",
+    Infernal: "炼狱",
+    Storm: "风暴",
+    Eldritch: "异界",
+    Tranquil: "静谧",
+    Paved: "石板",
+    Shrouded: "隐雾",
+    Sacred: "圣",
+    Fabled: "传说",
+    Frosty: "寒霜",
+    Winding: "曲行",
+    Echoing: "回响",
+    Serpentine: "蛇行",
+    Breezy: "清风",
+    Misty: "雾隐",
+    Rustic: "荒野",
+    Silent: "寂静",
+    Cobbled: "石砌",
+    Cracked: "裂纹",
+    Shaky: "颤地",
+    Obscure: "幽隐"
+  };
+
   const PROPER_NAME_SKIP = new Set([
     "Azgaar", "Fantasy", "Map", "Generator", "Google", "Discord", "Reddit",
     "Patreon", "Facebook", "Twitter", "Pinterest", "YouTube", "Watabou"
@@ -148,6 +283,7 @@
       if (PROPER_NAME_SKIP.has(word)) return token;
       if (CULTURE_WORD_CN[word]) return CULTURE_WORD_CN[word];
       if (RELIGION_FORM_CN[word]) return RELIGION_FORM_CN[word];
+      if (ROUTE_WORD_CN[word]) return ROUTE_WORD_CN[word];
       const dictHit = state.dict[word] || state.namesDict[word];
       if (dictHit) return dictHit;
       const cn = translateName(word);
@@ -164,6 +300,7 @@
       if (PROPER_NAME_SKIP.has(word)) return token;
       if (CULTURE_WORD_CN[word]) return CULTURE_WORD_CN[word];
       if (RELIGION_FORM_CN[word]) return RELIGION_FORM_CN[word];
+      if (ROUTE_WORD_CN[word]) return ROUTE_WORD_CN[word];
       const dictHit = state.dict[word] || state.namesDict[word];
       if (dictHit) return dictHit;
       const cn = translateName(word);
@@ -196,6 +333,42 @@
     return translateNamePhrase(key);
   }
 
+  function translateRouteName(text) {
+    const key = norm(text);
+    if (!key) return text;
+    const exact = state.namesDict[key];
+    if (exact) return exact;
+
+    const suffixes = Object.keys(ROUTE_SUFFIX_CN).sort((a, b) => b.length - a.length);
+    for (const suffix of suffixes) {
+      if (!key.endsWith(" " + suffix)) continue;
+      let stem = key.slice(0, -(suffix.length + 1)).trim();
+      if (stem.startsWith("The ")) stem = stem.slice(4);
+      if (!stem) return ROUTE_SUFFIX_CN[suffix];
+      const stemCn = stem.split(/\s+/).map(translateRouteToken).join("");
+      return stemCn + ROUTE_SUFFIX_CN[suffix];
+    }
+
+    return null;
+  }
+
+  function translateRouteToken(token) {
+    const clean = token.replace(/^[^\w']+|[^\w']+$/g, "");
+    if (!clean) return "";
+    if (ROUTE_WORD_CN[clean]) return ROUTE_WORD_CN[clean];
+    const dictHit = state.dict[clean] || state.namesDict[clean];
+    if (dictHit) return trimPhoneticName(dictHit, 2);
+    const cn = translateName(clean);
+    if (!cn || cn === clean) return clean;
+    return trimPhoneticName(cn, 2);
+  }
+
+  function trimPhoneticName(name, maxLen) {
+    const s = norm(name);
+    if ([...s].length <= maxLen) return s;
+    return [...s].slice(0, maxLen).join("");
+  }
+
   function translateByPattern(text) {
     // 0. 地图悬停提示：宗教、城镇、河流等动态格式
     const religionMatch = text.match(/^(Folk religion|Organized religion|Cult|Heresy): (.+)$/);
@@ -219,7 +392,7 @@
     }
 
     m = text.match(/^(.+)\. Click to edit the Route$/);
-    if (m) return `${translateNamePhrase(m[1])}。点击编辑路线`;
+    if (m) return `${translateRouteName(m[1]) || translateNamePhrase(m[1])}。点击编辑路线`;
 
     m = text.match(/^([A-Z][A-Za-z' -]{1,})\. Click to edit$/);
     if (m) return `${translateNamePhrase(m[1])}。点击编辑`;
@@ -285,6 +458,9 @@
         if (pm) return `国家：${translateNamePhrase(st)} 文化：${translateNamePhrase(cu)} 总人口：${pm[1]}（${pm[2]}%）`;
       }
     }
+
+    const routeName = translateRouteName(text);
+    if (routeName) return routeName;
 
     return null;
   }
