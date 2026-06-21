@@ -59,7 +59,73 @@
     ["is suzerain to",      "是", "的宗主国"]
   ];
 
+  const RELIGION_TYPE_CN = {
+    "Folk religion": "民俗信仰",
+    "Organized religion": "制度化宗教",
+    "Cult": "崇拜",
+    "Heresy": "异端"
+  };
+
+  const CULTURE_WORD_CN = {
+    Elfish: "精灵",
+    "Dark Elfish": "暗精灵",
+    Human: "人类",
+    Drakonic: "龙裔",
+    Serpents: "蛇族",
+    Orkish: "兽人",
+    Arachnid: "蛛族",
+    Dwarven: "矮人",
+    Goblin: "地精",
+    Era: "纪元"
+  };
+
+  const PROPER_NAME_SKIP = new Set([
+    "Azgaar", "Fantasy", "Map", "Generator", "Google", "Discord", "Reddit",
+    "Patreon", "Facebook", "Twitter", "Pinterest", "YouTube", "Watabou"
+  ]);
+
+  function translateNamePhrase(text) {
+    const key = norm(text);
+    if (!key) return text;
+    const exact = state.dict[key] || state.namesDict[key] || CULTURE_WORD_CN[key];
+    if (exact) return exact;
+
+    let out = key.replace(/\(([^)]+)\)/g, (_, inner) => {
+      return "（" + (CULTURE_WORD_CN[inner] || translateNamePhrase(inner)) + "）";
+    });
+
+    out = out.replace(/\b([A-Z][A-Za-z'-]{1,})\b/g, (token, word) => {
+      if (PROPER_NAME_SKIP.has(word)) return token;
+      if (CULTURE_WORD_CN[word]) return CULTURE_WORD_CN[word];
+      const dictHit = state.dict[word] || state.namesDict[word];
+      if (dictHit) return dictHit;
+      const cn = translateName(word);
+      return cn || token;
+    });
+
+    return out;
+  }
+
+  function translateMixedProperNames(text) {
+    const key = norm(text);
+    if (!key || !/[一-鿿㐀-䶿]/.test(key) || !/[A-Z][A-Za-z'-]{1,}/.test(key)) return text;
+    return text.replace(/\b([A-Z][A-Za-z'-]{1,})\b/g, (token, word) => {
+      if (PROPER_NAME_SKIP.has(word)) return token;
+      if (CULTURE_WORD_CN[word]) return CULTURE_WORD_CN[word];
+      const dictHit = state.dict[word] || state.namesDict[word];
+      if (dictHit) return dictHit;
+      const cn = translateName(word);
+      return cn || token;
+    });
+  }
+
   function translateByPattern(text) {
+    // 0. 地图/宗教悬停提示："Folk religion: Eldar (Elfish) Beliefs"
+    const religionMatch = text.match(/^(Folk religion|Organized religion|Cult|Heresy): (.+) Beliefs$/);
+    if (religionMatch) {
+      return `${RELIGION_TYPE_CN[religionMatch[1]] || religionMatch[1]}：${translateNamePhrase(religionMatch[2])} 信众`;
+    }
+
     // 1. 外交气泡（两种格式）
     const CCR = "Click to change relations. ";
     const isCCR = text.startsWith(CCR);
@@ -72,14 +138,14 @@
       const after = base.slice(idx + 1 + verb.length + 1);
       const dotIdx = after.indexOf(".");
       const b = dotIdx >= 0 ? after.slice(0, dotIdx) : after;
-      const cn = `${a} ${pre} ${b} ${post}`;
+      const cn = `${translateNamePhrase(a)} ${pre} ${translateNamePhrase(b)} ${post}`;
       if (isCCR) return "点击更改邦交。" + cn;
-      return cn + "。点击查看与 " + a + " 的邦交关系";
+      return cn + "。点击查看与 " + translateNamePhrase(a) + " 的邦交关系";
     }
 
     // "List below shows relations to X"
     const LBSR = "List below shows relations to ";
-    if (text.startsWith(LBSR)) return "下方列表显示与 " + text.slice(LBSR.length) + " 的邦交关系";
+    if (text.startsWith(LBSR)) return "下方列表显示与 " + translateNamePhrase(text.slice(LBSR.length)) + " 的邦交关系";
 
     // 2. 人口气泡（分号格式，来自 states/provinces/zones 编辑器）
     // [^;]+? 而非 [^;.]+?：值本身可含小数点（如 "6.7K"）
@@ -112,7 +178,7 @@
         const cu = text.slice(ci + 10, ti);
         const rest = text.slice(ti + 19);
         const pm = rest.match(/^([\d,]+) \((\d+)%\)$/);
-        if (pm) return `国家：${st} 文化：${cu} 总人口：${pm[1]}（${pm[2]}%）`;
+        if (pm) return `国家：${translateNamePhrase(st)} 文化：${translateNamePhrase(cu)} 总人口：${pm[1]}（${pm[2]}%）`;
       }
     }
 
@@ -321,6 +387,31 @@
       const out = t(el.value);
       if (out !== el.value) el.value = out;
     }
+    if (el.tagName === "INPUT") translateGeneratedInputValue(el);
+    if (el.tagName === "OPTION") translateOptionText(el);
+  }
+
+  function translateGeneratedInputValue(el) {
+    if (document.activeElement === el) return;
+    if (el.id !== "mapName" && el.id !== "eraInput") return;
+    const value = norm(el.value);
+    if (!value || /[一-鿿㐀-䶿]/.test(value) || !/[A-Za-z]/.test(value)) return;
+    const out = translateNamePhrase(value);
+    if (out && out !== value) {
+      el.value = out;
+      if (el.id === "eraInput" && window.options) window.options.era = out;
+    }
+  }
+
+  function translateOptionText(el) {
+    const raw = el.textContent;
+    const key = norm(raw);
+    if (!key || /[一-鿿㐀-䶿]/.test(key)) return;
+    let out = t(raw);
+    if (out === raw && /^[A-Z][A-Za-z'-]{1,}(?:\s+\([A-Za-z ]+\))?$/.test(key)) {
+      out = raw.replace(key, translateNamePhrase(key));
+    }
+    if (out !== raw) el.textContent = out;
   }
 
   // 翻译纯文本节点（仅当节点不含其他元素时，避免破坏结构）
@@ -422,6 +513,12 @@
           textNode.nodeValue = lead + latinCn + mixedM[2] + tail;
         }
       }
+    }
+
+    const mixedOut = translateMixedProperNames(raw);
+    if (mixedOut !== raw) {
+      textNode.nodeValue = mixedOut;
+      return;
     }
 
     const out = t(raw);
