@@ -131,13 +131,6 @@
     if (cjk / key.length > 0.3) return text;
     // 模板翻译的输出被 MutationObserver 二次触发时，直接放行
     if (state.patternOutputs.has(key)) return text;
-    const hit = state.dict[key];
-    if (hit !== undefined) {
-      // 还原原文的首尾空白（DOM 文本节点常带缩进空白）
-      const lead = (text.match(/^\s*/) || [""])[0];
-      const tail = (text.match(/\s*$/) || [""])[0];
-      return lead + hit + tail;
-    }
     // 模板翻译（外交/人口/文化气泡）
     const patternHit = translateByPattern(key);
     if (patternHit !== null) {
@@ -146,10 +139,24 @@
       const tail = (text.match(/\s*$/) || [""])[0];
       return lead + patternHit + tail;
     }
+    const hit = state.dict[key];
+    if (hit !== undefined) {
+      // 还原原文的首尾空白（DOM 文本节点常带缩进空白）
+      const lead = (text.match(/^\s*/) || [""])[0];
+      const tail = (text.match(/\s*$/) || [""])[0];
+      return lead + hit + tail;
+    }
     // 数字+单位 / "N of N" / 内部 ID — 不记缺键
     if (/^[\d.,]+[KMB]?(?:\s*(?:km[²2]?|m[³3]\/s|%))?$/.test(key)) return text;
     if (/^\d+ of \d+$/.test(key)) return text;
     if (/^regiment\d+-\d+$/.test(key)) return text;
+    if (/^#[0-9a-f]{3,8}$/i.test(key)) return text;
+    if (/^[A-Za-z]$/.test(key)) return text;
+    if (/^[%()+*/.^|~°×÷•⇇⇈⇉⇊⇒≤►◄❓🔊👑-]$/.test(key)) return text;
+    if (/^[xyXYn]：$/.test(key)) return text;
+    if (/^\.\w+$/.test(key)) return text;
+    if (/^\d+°$/.test(key)) return text;
+    if (/^[\w.-]+\.[a-z]{2,}(?:\/.*)?$/i.test(key)) return text;
     state.missing.add(key);
     return text;
   }
@@ -376,18 +383,12 @@
       }
     }
 
-    const out = t(raw);
-    if (out !== raw) {
-      textNode.nodeValue = out;
-      return;
-    }
-
     // SVG 地图专名翻译：对 SVG 内以大写开头的纯字母单词（固有名词）做词根+音译
     if (state.morphemes && isInsideSvg(textNode)) {
       const trimmed = norm(raw);
-      // 单词：仅字母/连字符/撇号，首字母大写，≥3 字符
-      if (/^[A-Z][a-zA-Z'-]{2,}$/.test(trimmed)) {
-        const cn = translateName(trimmed);
+      // 单词：仅字母/连字符/撇号，首字母大写，≥2 字符
+      if (/^[A-Z][a-zA-Z'-]{1,}$/.test(trimmed)) {
+        const cn = state.dict[trimmed] || translateName(trimmed);
         if (cn) {
           const lead = (raw.match(/^\s*/) || [""])[0];
           const tail = (raw.match(/\s*$/) || [""])[0];
@@ -400,7 +401,7 @@
         const parts = trimmed.split(/\s+/).map(w => {
           const dictHit = state.dict[norm(w)];
           if (dictHit) return dictHit;
-          if (/^[A-Z][a-zA-Z'-]{2,}$/.test(w)) return translateName(w) || w;
+          if (/^[A-Z][a-zA-Z'-]{1,}$/.test(w)) return translateName(w) || w;
           return w;
         });
         const combined = parts.join(" ");
@@ -412,7 +413,7 @@
         return;
       }
       // 半英半中兜底（如 "Jeonguk 王国"）：SVG 标签已被部分翻译，拉丁名段未命中
-      const mixedM = trimmed.match(/^([A-Z][a-zA-Z'-]{2,})(\s+[一-鿿㐀-䶿].*)$/);
+      const mixedM = trimmed.match(/^([A-Z][a-zA-Z'-]{1,})(\s+[一-鿿㐀-䶿].*)$/);
       if (mixedM) {
         const latinCn = translateName(mixedM[1]);
         if (latinCn && latinCn !== mixedM[1]) {
@@ -421,6 +422,12 @@
           textNode.nodeValue = lead + latinCn + mixedM[2] + tail;
         }
       }
+    }
+
+    const out = t(raw);
+    if (out !== raw) {
+      textNode.nodeValue = out;
+      return;
     }
   }
 
