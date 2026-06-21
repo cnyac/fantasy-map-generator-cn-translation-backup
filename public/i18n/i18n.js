@@ -119,7 +119,19 @@
   const GROUP_NAME_CN = {
     roads: "道路",
     trails: "小径",
-    searoutes: "海路"
+    searoutes: "海路",
+    freshwater: "淡水湖",
+    salt: "咸水湖",
+    sinkhole: "陷穴湖",
+    frozen: "冰湖",
+    lava: "熔岩湖",
+    dry: "干湖",
+    capital: "首都",
+    city: "城市",
+    town: "城镇",
+    village: "村庄",
+    port: "港口",
+    generic: "通用"
   };
 
   const GEOGRAPHIC_TYPE_CN = {
@@ -632,6 +644,10 @@
       return "拖动控制点以调整河道。点击控制点可移除；点击河流可添加控制点。如需大幅修改，请改为新建河流";
     }
 
+    if (text === "Drag to move the vertex. Please use for fine-tuning only! Edit heightmap to change actual cell heights") {
+      return "拖动顶点以调整位置。此功能仅适合微调；如需改变真实单元格高度，请编辑高度图";
+    }
+
     // 1. 外交气泡（两种格式）
     const CCR = "Click to change relations. ";
     const isCCR = text.startsWith(CCR);
@@ -918,14 +934,26 @@
   function translateGeneratedInputValue(el) {
     if (document.activeElement === el) return;
     const routeInput = el.id === "routeName";
-    if (el.id !== "mapName" && el.id !== "eraInput" && !routeInput) return;
+    const placeNameInput = /^(lake|river|burg|marker|label|route)Name$/.test(el.id);
+    const literal = {
+      lakeInlets: {no: "无"},
+      lakeOutlet: {no: "无"},
+      riverType: {River: "河", Creek: "溪", Brook: "溪流", Stream: "溪流"}
+    }[el.id];
+    if (literal && literal[el.value]) {
+      el.value = literal[el.value];
+      if (el.id === "riverType") el.dispatchEvent(new Event("input", {bubbles: true}));
+      return;
+    }
+    const generatedNameInput = ["riverBasin"].includes(el.id);
+    if (el.id !== "mapName" && el.id !== "eraInput" && !routeInput && !placeNameInput && !generatedNameInput) return;
     const value = norm(el.value);
     if (!value || /[一-鿿㐀-䶿]/.test(value) || !/[A-Za-z]/.test(value)) return;
     const out = routeInput ? localizeGeneratedName(value, "route") : localizeGeneratedName(value);
     if (out && out !== value) {
       el.value = out;
       if (el.id === "eraInput" && window.options) window.options.era = out;
-      if (routeInput) el.dispatchEvent(new Event("input", {bubbles: true}));
+      if (placeNameInput || el.id === "riverType") el.dispatchEvent(new Event("input", {bubbles: true}));
     }
   }
 
@@ -942,11 +970,11 @@
 
   function scanGeneratedFormValues() {
     if (state.locale === "en") return;
-    ["mapName", "eraInput", "routeName"].forEach(id => {
+    ["mapName", "eraInput", "routeName", "lakeName", "riverName", "riverType", "riverBasin", "burgName", "markerName", "labelName", "lakeInlets", "lakeOutlet"].forEach(id => {
       const el = document.getElementById(id);
       if (el) translateGeneratedInputValue(el);
     });
-    document.querySelectorAll("#routeGroup option, #routeCreatorGroupSelect option").forEach(translateOptionText);
+    document.querySelectorAll("#routeGroup option, #routeCreatorGroupSelect option, #lakeGroup option, #burgGroup option, #riverMainstem option").forEach(translateOptionText);
   }
 
   // 翻译纯文本节点（仅当节点不含其他元素时，避免破坏结构）
