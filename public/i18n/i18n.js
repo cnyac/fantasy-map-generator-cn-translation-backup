@@ -25,7 +25,9 @@
     dict: Object.create(null), // { [englishSource]: chinese }
     ready: false,
     missing: new Set(), // 未命中的英文原文（去重）
-    patternOutputs: new Set() // translateByPattern 输出过的文本，拦截 MutationObserver 二次调用
+    patternOutputs: new Set(), // translateByPattern 输出过的文本，拦截 MutationObserver 二次调用
+    morphemes: null,           // 加载自 morphemes.json
+    namesDict: Object.create(null) // 加载自 names.json
   };
 
   function resolveInitialLocale() {
@@ -152,6 +154,97 @@
     return text;
   }
 
+  // ---- 专名词根翻译（SVG 地图固有名词：州名/城市名/路线名）--------------
+
+  // 检测节点是否在 SVG 地图元素内（map labels 都在 <svg id="svg"> 里）
+  function isInsideSvg(node) {
+    let el = node.nodeType === 3 ? node.parentNode : node;
+    while (el && el !== document.body) {
+      if (el.tagName && el.tagName.toLowerCase() === "svg") return true;
+      el = el.parentNode;
+    }
+    return false;
+  }
+
+  // 音节音译：把剩余 Latin 部分按最长匹配拼成汉字（以 morphemes.phonetic 为表）
+  function phoneticTranslit(text) {
+    if (!text || !state.morphemes) return text;
+    const table = state.morphemes.phonetic;
+    const s = text.toLowerCase();
+    let result = "";
+    let i = 0;
+    while (i < s.length) {
+      let matched = false;
+      const maxLen = Math.min(4, s.length - i);
+      for (let len = maxLen; len >= 1; len--) {
+        const chunk = s.slice(i, i + len);
+        // 线性查表（表已按长度降序排列）
+        for (const [pat, cn] of table) {
+          if (pat.length === len && pat === chunk) {
+            result += cn;
+            i += len;
+            matched = true;
+            break;
+          }
+          if (pat.length < len) break;
+        }
+        if (matched) break;
+      }
+      if (!matched) i++; // 跳过无法匹配的字符
+    }
+    return result;
+  }
+
+  // 专名翻译主函数：词根匹配（前缀/后缀）+ 音译回退
+  function translateName(word) {
+    if (!word || !state.morphemes) return null;
+
+    // 1. 手动覆盖词典优先
+    const override = state.namesDict[word] || state.namesDict[norm(word)];
+    if (override) return override;
+
+    const suffixes = state.morphemes.suffixes;
+    const prefixes = state.morphemes.prefixes;
+    let remaining = word;
+    let prefixCn = "";
+    let suffixCn = "";
+
+    // 2. 前缀匹配（表已按长度降序）
+    for (const [pat, cn] of prefixes) {
+      if (remaining.length > pat.length &&
+          remaining.slice(0, pat.length).toLowerCase() === pat.toLowerCase()) {
+        prefixCn = cn;
+        remaining = remaining.slice(pat.length);
+        break;
+      }
+    }
+
+    // 3. 后缀匹配（表已按长度降序）
+    // 有前缀时允许 remaining 恰好等于后缀（如 Neu+burg→新+堡）；
+    // 无前缀时要求后缀前至少还有 1 个字母（避免把 "Berg" 整体视为后缀）
+    for (const [pat, cn] of suffixes) {
+      const minLen = prefixCn ? pat.length : pat.length + 1;
+      if (remaining.length >= minLen &&
+          remaining.slice(-pat.length).toLowerCase() === pat.toLowerCase()) {
+        suffixCn = cn;
+        remaining = remaining.slice(0, -pat.length);
+        break;
+      }
+    }
+
+    // 4. 剩余部分音译
+    const midCn = phoneticTranslit(remaining);
+    if (!midCn && !prefixCn && !suffixCn) return null;
+
+    // 5. 强制最大 5 字：超出时裁剪音译中段，保留词根前缀+后缀
+    const MAX_LEN = 5;
+    const full = prefixCn + midCn + suffixCn;
+    if (full.length <= MAX_LEN) return full;
+    const budget = MAX_LEN - prefixCn.length - suffixCn.length;
+    if (budget <= 0) return (prefixCn + suffixCn).slice(0, MAX_LEN);
+    return prefixCn + midCn.slice(0, budget) + suffixCn;
+  }
+
   // ---- 字典加载 ----------------------------------------------------------
   async function loadDict(locale) {
     const dict = Object.create(null);
@@ -169,6 +262,24 @@
         }
       })
     );
+    // 加载词根表和手动覆盖词典（失败不阻断）
+    await Promise.all([
+      fetch(`${BASE}locales/${locale}/morphemes.json`, {cache: "no-cache"})
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (d) state.morphemes = d; })
+        .catch(() => {}),
+      fetch(`${BASE}locales/${locale}/names.json`, {cache: "no-cache"})
+        .then(r => r.ok ? r.json() : null)
+        .then(d => {
+          if (!d) return;
+          for (const k in d) {
+            if (k.startsWith("_")) continue;
+            state.namesDict[k] = d[k];
+            dict[norm(k)] = d[k]; // 同时注入主词典，支持 t() 直接命中
+          }
+        })
+        .catch(() => {})
+    ]);
     return dict;
   }
 
@@ -209,8 +320,108 @@
   function translateTextNode(textNode) {
     const raw = textNode.nodeValue;
     if (!raw || !norm(raw)) return;
+
+    // 处理键盘快捷键模式：<label><u>B</u>iomes</label> 或 <label>Bor<u>D</u>ers</label>
+    // 问题：TreeWalker 把 "iomes"/"Bor" 当独立文本节点翻译，且先清空前置节点后
+    //       后续节点读到的 parent.textContent 已残缺（"BorDers"→"Ders"，查不到 "Borders"）。
+    // 方案：首次遇到快捷键父元素时，在 DOM 修改前把完整 key 和译文存入 data-i18n-sc；
+    //       同时把 <u> 内容小写化后重试（处理大写快捷键字母，如 <u>D</u> 在 "Borders" 里）。
+    const parent = textNode.parentNode;
+    if (parent && parent.nodeType === 1 && !SKIP_TAGS.has(parent.tagName)) {
+      const siblings = Array.from(parent.childNodes);
+      const hasShortcutU = siblings.some(
+        n => n.nodeName === "U" && norm(n.textContent || "").length <= 2
+      );
+      if (hasShortcutU) {
+        const ATTR = "data-i18n-sc";
+        let stored = parent.getAttribute(ATTR);
+        if (stored === null) {
+          // 首次：在修改 DOM 前计算，并缓存到 attribute
+          const raw2 = norm(parent.textContent || "");
+          let hit = state.dict[raw2];
+          if (hit === undefined) {
+            // 大写快捷键回退：把 <u> 内容小写后重拼（"BorDers" → "Borders"）
+            const lower = norm(
+              siblings.map(n =>
+                n.nodeName === "U"
+                  ? (n.textContent || "").toLowerCase()
+                  : n.nodeType === 3 ? n.nodeValue || "" : ""
+              ).join("")
+            );
+            if (lower !== raw2) hit = state.dict[lower];
+          }
+          stored = hit !== undefined ? hit : "";
+          parent.setAttribute(ATTR, stored);
+        }
+        if (stored) {
+          const textSiblings = siblings.filter(
+            n => n.nodeType === 3 && norm(n.nodeValue || "").length > 0
+          );
+          const isLast =
+            textSiblings.length > 0 &&
+            textSiblings[textSiblings.length - 1] === textNode;
+          if (isLast) {
+            const lead = (raw.match(/^\s*/) || [""])[0];
+            const tail = (raw.match(/\s*$/) || [""])[0];
+            textNode.nodeValue = lead + stored + tail;
+            // 翻译成功后隐藏快捷键字母（纯视觉，不影响快捷键功能）
+            for (const sib of siblings) {
+              if (sib.nodeName === "U") sib.style.display = "none";
+            }
+          } else {
+            textNode.nodeValue = (raw.match(/^\s*/) || [""])[0];
+          }
+          return;
+        }
+      }
+    }
+
     const out = t(raw);
-    if (out !== raw) textNode.nodeValue = out;
+    if (out !== raw) {
+      textNode.nodeValue = out;
+      return;
+    }
+
+    // SVG 地图专名翻译：对 SVG 内以大写开头的纯字母单词（固有名词）做词根+音译
+    if (state.morphemes && isInsideSvg(textNode)) {
+      const trimmed = norm(raw);
+      // 单词：仅字母/连字符/撇号，首字母大写，≥3 字符
+      if (/^[A-Z][a-zA-Z'-]{2,}$/.test(trimmed)) {
+        const cn = translateName(trimmed);
+        if (cn) {
+          const lead = (raw.match(/^\s*/) || [""])[0];
+          const tail = (raw.match(/\s*$/) || [""])[0];
+          textNode.nodeValue = lead + cn + tail;
+          return;
+        }
+      }
+      // 多词组合（如 "Helia Kingdom" 在同一文本节点时）：逐词翻译
+      if (/^[A-Z][a-zA-Z'-]+(?:\s+[A-Z][a-zA-Z'-]+)+$/.test(trimmed)) {
+        const parts = trimmed.split(/\s+/).map(w => {
+          const dictHit = state.dict[norm(w)];
+          if (dictHit) return dictHit;
+          if (/^[A-Z][a-zA-Z'-]{2,}$/.test(w)) return translateName(w) || w;
+          return w;
+        });
+        const combined = parts.join(" ");
+        if (combined !== trimmed) {
+          const lead = (raw.match(/^\s*/) || [""])[0];
+          const tail = (raw.match(/\s*$/) || [""])[0];
+          textNode.nodeValue = lead + combined + tail;
+        }
+        return;
+      }
+      // 半英半中兜底（如 "Jeonguk 王国"）：SVG 标签已被部分翻译，拉丁名段未命中
+      const mixedM = trimmed.match(/^([A-Z][a-zA-Z'-]{2,})(\s+[一-鿿㐀-䶿].*)$/);
+      if (mixedM) {
+        const latinCn = translateName(mixedM[1]);
+        if (latinCn && latinCn !== mixedM[1]) {
+          const lead = (raw.match(/^\s*/) || [""])[0];
+          const tail = (raw.match(/\s*$/) || [""])[0];
+          textNode.nodeValue = lead + latinCn + mixedM[2] + tail;
+        }
+      }
+    }
   }
 
   // 遍历子树：属性 + 文本节点
@@ -265,6 +476,10 @@
           });
         } else if (m.type === "attributes" && m.target.nodeType === 1) {
           if (ATTR_WHITELIST.includes(m.attributeName)) translateAttrs(m.target);
+        } else if (m.type === "characterData" && m.target.nodeType === 3) {
+          // SVG 标签可能经由 textNode.data 直接写入（如 D3 的 .text()），
+          // childList 不触发，需在此兜底
+          if (state.morphemes && isInsideSvg(m.target)) translateTextNode(m.target);
         }
       }
     });
@@ -272,7 +487,8 @@
       childList: true,
       subtree: true,
       attributes: true,
-      attributeFilter: ATTR_WHITELIST
+      attributeFilter: ATTR_WHITELIST,
+      characterData: true
     });
   }
 
@@ -297,6 +513,9 @@
     installTipHook();
     translateSubtree(document.body);
     startObserver();
+    // 补扫：FMG 初始地图可能在 dict 加载期间异步渲染，characterData 观察上线前已入 DOM
+    setTimeout(() => translateSubtree(document.body), 800);
+    setTimeout(() => translateSubtree(document.body), 2000);
   }
 
   function setLocale(locale) {

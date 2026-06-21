@@ -4,14 +4,37 @@ import { ensureEl, gauss, generateSeed, getMixedColor, getPolesOfInaccessibility
 
 // 汉化（fork-only）：省级地名「称号」考据中文译名，中文模式下拼装「专名 + 称号」格式。
 const PROVINCE_FORM_CN: Record<string, string> = {
-  County: "郡", Earldom: "伯爵领", Shire: "郡", Landgrave: "方伯领", Margrave: "边疆伯领",
-  Barony: "男爵领", Captaincy: "都尉领", Seneschalty: "总管辖区",
-  Province: "省", Department: "省", Governorate: "总督辖区", District: "区",
-  Canton: "州", Prefecture: "府", Parish: "堂区", Deanery: "教区",
-  State: "州", Republic: "共和地", Council: "议会区", Commune: "公社",
-  Community: "社区", Tribe: "部落", Territory: "领地", Land: "地",
-  Region: "地区", Clan: "氏族区", Dependency: "附属领", Area: "区域",
-  Island: "岛", Islands: "群岛", Colony: "殖民地"
+  County: "郡",
+  Earldom: "伯爵领",
+  Shire: "郡",
+  Landgrave: "方伯领",
+  Margrave: "边疆伯领",
+  Barony: "男爵领",
+  Captaincy: "都尉领",
+  Seneschalty: "总管辖区",
+  Province: "省",
+  Department: "省",
+  Governorate: "总督辖区",
+  District: "区",
+  Canton: "州",
+  Prefecture: "府",
+  Parish: "堂区",
+  Deanery: "教区",
+  State: "州",
+  Republic: "共和地",
+  Council: "议会区",
+  Commune: "公社",
+  Community: "社区",
+  Tribe: "部落",
+  Territory: "领地",
+  Land: "地",
+  Region: "地区",
+  Clan: "氏族区",
+  Dependency: "附属领",
+  Area: "区域",
+  Island: "岛",
+  Islands: "群岛",
+  Colony: "殖民地"
 };
 
 function isNonEnglishLocale(): boolean {
