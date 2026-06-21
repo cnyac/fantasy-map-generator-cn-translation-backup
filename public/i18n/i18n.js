@@ -116,6 +116,12 @@
     generic: "城镇"
   };
 
+  const GROUP_NAME_CN = {
+    roads: "道路",
+    trails: "小径",
+    searoutes: "海路"
+  };
+
   const GEOGRAPHIC_TYPE_CN = {
     River: "河",
     Creek: "溪",
@@ -397,6 +403,8 @@
     "Patreon", "Facebook", "Twitter", "Pinterest", "YouTube", "Watabou"
   ]);
 
+  const PLACE_SUFFIX_FALLBACK = ["城", "港", "堡", "谷", "津", "湾", "岭", "泽", "丘", "渡", "庄", "溪"];
+
   function translateNamePhrase(text) {
     const key = norm(text);
     if (!key) return text;
@@ -414,7 +422,7 @@
       if (NAME_WORD_CN[word]) return NAME_WORD_CN[word];
       const dictHit = state.namesDict[word];
       if (dictHit) return dictHit;
-      const cn = translateName(word);
+      const cn = translateName(word, {placeFallback: true});
       return cn || token;
     });
 
@@ -431,7 +439,7 @@
       if (NAME_WORD_CN[word]) return NAME_WORD_CN[word];
       const dictHit = state.namesDict[word];
       if (dictHit) return dictHit;
-      const cn = translateName(word);
+      const cn = translateName(word, {placeFallback: true});
       return cn || token;
     });
   }
@@ -480,6 +488,13 @@
     return null;
   }
 
+  function localizeGeneratedName(text, kind = "place") {
+    const key = norm(text);
+    if (!key || /[一-鿿㐀-䶿]/.test(key) || !/[A-Za-z]/.test(key)) return text;
+    if (kind === "route") return translateRouteName(key) || translateNamePhrase(key);
+    return translateNamePhrase(key);
+  }
+
   function translateRouteToken(token) {
     const clean = token.replace(/^[^\w']+|[^\w']+$/g, "");
     if (!clean) return "";
@@ -489,6 +504,22 @@
     const cn = translateName(clean);
     if (!cn || cn === clean) return clean;
     return trimPhoneticName(cn, 2);
+  }
+
+  function hashString(text) {
+    let h = 2166136261;
+    for (let i = 0; i < text.length; i++) {
+      h ^= text.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+
+  function makePlaceFallback(word, phonetic) {
+    const base = trimPhoneticName(phonetic, 2);
+    if (!base) return phonetic;
+    const suffix = PLACE_SUFFIX_FALLBACK[hashString(word) % PLACE_SUFFIX_FALLBACK.length];
+    return base.endsWith(suffix) ? base : base + suffix;
   }
 
   function trimPhoneticName(name, maxLen) {
@@ -593,6 +624,14 @@
       return `点击编辑${nouns[m[1]] || m[1]}`;
     }
 
+    if (text === "Drag control points to change the route. Click on point to remove it. Click on the route to add additional control point. For major changes please create a new route instead") {
+      return "拖动控制点以调整路线。点击控制点可移除；点击路线可添加控制点。如需大幅修改，请改为新建路线";
+    }
+
+    if (text === "Drag control points to change the river course. Click on point to remove it. Click on river to add additional control point. For major changes please create a new river instead") {
+      return "拖动控制点以调整河道。点击控制点可移除；点击河流可添加控制点。如需大幅修改，请改为新建河流";
+    }
+
     // 1. 外交气泡（两种格式）
     const CCR = "Click to change relations. ";
     const isCCR = text.startsWith(CCR);
@@ -694,7 +733,7 @@
     if (/^\d+°$/.test(key)) return text;
     if (/^[\w.-]+\.[a-z]{2,}(?:\/.*)?$/i.test(key)) return text;
     if (/^[A-Z][A-Za-z'-]{1,}$/.test(key) && !PROPER_NAME_SKIP.has(key)) {
-      const named = translateName(key);
+      const named = translateName(key, {placeFallback: true});
       if (named && named !== key) return named;
     }
     state.missing.add(key);
@@ -743,7 +782,7 @@
   }
 
   // 专名翻译主函数：词根匹配（前缀/后缀）+ 音译回退
-  function translateName(word) {
+  function translateName(word, options = {}) {
     if (!word || !state.morphemes) return null;
 
     // 1. 手动覆盖词典优先
@@ -788,6 +827,8 @@
     if (!midCn && !prefixCn && !suffixCn) return null;
 
     // 6. 纯音译最多 4 字；有前后缀词根时保留词根并裁剪中段
+    if (!prefixCn && !suffixCn && options.placeFallback) return makePlaceFallback(word, midCn);
+
     const MAX_LEN = prefixCn || suffixCn ? 5 : 4;
     const full = prefixCn + midCn + suffixCn;
     if (full.length <= MAX_LEN) return full;
@@ -876,13 +917,15 @@
 
   function translateGeneratedInputValue(el) {
     if (document.activeElement === el) return;
-    if (el.id !== "mapName" && el.id !== "eraInput") return;
+    const routeInput = el.id === "routeName";
+    if (el.id !== "mapName" && el.id !== "eraInput" && !routeInput) return;
     const value = norm(el.value);
     if (!value || /[一-鿿㐀-䶿]/.test(value) || !/[A-Za-z]/.test(value)) return;
-    const out = translateNamePhrase(value);
+    const out = routeInput ? localizeGeneratedName(value, "route") : localizeGeneratedName(value);
     if (out && out !== value) {
       el.value = out;
       if (el.id === "eraInput" && window.options) window.options.era = out;
+      if (routeInput) el.dispatchEvent(new Event("input", {bubbles: true}));
     }
   }
 
@@ -890,11 +933,20 @@
     const raw = el.textContent;
     const key = norm(raw);
     if (!key || /[一-鿿㐀-䶿]/.test(key)) return;
-    let out = t(raw);
+    let out = GROUP_NAME_CN[key] || t(raw);
     if (out === raw && /^[A-Z][A-Za-z'-]{1,}(?:\s+\([A-Za-z ]+\))?$/.test(key)) {
       out = raw.replace(key, translateNamePhrase(key));
     }
     if (out !== raw) el.textContent = out;
+  }
+
+  function scanGeneratedFormValues() {
+    if (state.locale === "en") return;
+    ["mapName", "eraInput", "routeName"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) translateGeneratedInputValue(el);
+    });
+    document.querySelectorAll("#routeGroup option, #routeCreatorGroupSelect option").forEach(translateOptionText);
   }
 
   // 翻译纯文本节点（仅当节点不含其他元素时，避免破坏结构）
@@ -962,7 +1014,7 @@
       const trimmed = norm(raw);
       // 单词：仅字母/连字符/撇号，首字母大写，≥2 字符
       if (/^[A-Z][a-zA-Z'-]{1,}$/.test(trimmed)) {
-        const cn = state.namesDict[trimmed] || translateName(trimmed) || state.dict[trimmed];
+        const cn = state.namesDict[trimmed] || translateName(trimmed, {placeFallback: true}) || state.dict[trimmed];
         if (cn) {
           const lead = (raw.match(/^\s*/) || [""])[0];
           const tail = (raw.match(/\s*$/) || [""])[0];
@@ -975,7 +1027,7 @@
         const parts = trimmed.split(/\s+/).map(w => {
           const dictHit = state.namesDict[norm(w)];
           if (dictHit) return dictHit;
-          if (/^[A-Z][a-zA-Z'-]{1,}$/.test(w)) return translateName(w) || w;
+          if (/^[A-Z][a-zA-Z'-]{1,}$/.test(w)) return translateName(w, {placeFallback: true}) || w;
           return w;
         });
         const combined = parts.join(" ");
@@ -989,7 +1041,7 @@
       // 半英半中兜底（如 "Jeonguk 王国"）：SVG 标签已被部分翻译，拉丁名段未命中
       const mixedM = trimmed.match(/^([A-Z][a-zA-Z'-]{1,})(\s+[一-鿿㐀-䶿].*)$/);
       if (mixedM) {
-        const latinCn = translateName(mixedM[1]);
+        const latinCn = translateName(mixedM[1], {placeFallback: true});
         if (latinCn && latinCn !== mixedM[1]) {
           const lead = (raw.match(/^\s*/) || [""])[0];
           const tail = (raw.match(/\s*$/) || [""])[0];
@@ -1103,6 +1155,8 @@
     // 补扫：FMG 初始地图可能在 dict 加载期间异步渲染，characterData 观察上线前已入 DOM
     setTimeout(() => translateSubtree(document.body), 800);
     setTimeout(() => translateSubtree(document.body), 2000);
+    setTimeout(scanGeneratedFormValues, 300);
+    setInterval(scanGeneratedFormValues, 1500);
   }
 
   function setLocale(locale) {
