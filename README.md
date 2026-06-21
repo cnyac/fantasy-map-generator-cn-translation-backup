@@ -1,41 +1,106 @@
-# Fantasy Map Generator
+# Fantasy Map Generator 中文增强版
 
-Azgaar's _Fantasy Map Generator_ is a free web application that helps fantasy writers, game masters, and cartographers create and edit fantasy maps.
+这是 [Azgaar's Fantasy Map Generator](https://github.com/Azgaar/Fantasy-Map-Generator) 的中文本地化增强分支。原项目是一个免费的开源奇幻地图生成器，适合世界观创作者、跑团主持人、小说作者、游戏策划和地图爱好者用来生成、编辑和导出奇幻世界地图。
 
-Link: [azgaar.github.io/Fantasy-Map-Generator](https://azgaar.github.io/Fantasy-Map-Generator).
+本分支的目标不是重做 Fantasy Map Generator，而是让中文读者可以更顺手地使用它：打开就是中文界面，地图上的国家、城镇、路线、政体、地理和军事术语尽量符合中文语境，同时保留原项目完整的生成、编辑和导出能力。
 
-Refer to the [project wiki](https://github.com/Azgaar/Fantasy-Map-Generator/wiki) for guidance. The current progress is tracked in [Trello](https://trello.com/b/7x832DG4/fantasy-map-generator). Some details are covered in my old blog [_Fantasy Maps for fun and glory_](https://azgaar.wordpress.com).
+## 致谢原项目
 
-[![preview](https://github.com/Azgaar/Fantasy-Map-Generator/assets/26469650/9502eae9-92e0-4d0d-9f17-a2ba4a565c01)](https://github.com/Azgaar/Fantasy-Map-Generator/assets/26469650/11a42446-4bd5-4526-9cb1-3ef97c868992)
+本项目基于 Azgaar 开发和维护的开源项目：
 
-[![preview](https://github.com/Azgaar/Fantasy-Map-Generator/assets/26469650/e751a9e5-7986-4638-b8a9-362395ef7583)](https://github.com/Azgaar/Fantasy-Map-Generator/assets/26469650/e751a9e5-7986-4638-b8a9-362395ef7583)
+- 原项目仓库：[Azgaar/Fantasy-Map-Generator](https://github.com/Azgaar/Fantasy-Map-Generator)
+- 原版在线应用：[azgaar.github.io/Fantasy-Map-Generator](https://azgaar.github.io/Fantasy-Map-Generator)
+- 原项目 Wiki：[Fantasy Map Generator Wiki](https://github.com/Azgaar/Fantasy-Map-Generator/wiki)
 
-[![preview](https://github.com/Azgaar/Fantasy-Map-Generator/assets/26469650/b0d0efde-a0d1-4e80-8818-ea3dd83c2323)](https://github.com/Azgaar/Fantasy-Map-Generator/assets/26469650/b0d0efde-a0d1-4e80-8818-ea3dd83c2323)
+感谢 Azgaar 和社区长期维护这个强大的地图生成器。本分支保留原项目的 MIT License，所有核心生成能力、地图编辑能力和大量原始资源均来自上游项目。
 
-Join our [Discord server](https://discordapp.com/invite/X7E84HU) and [Reddit community](https://www.reddit.com/r/FantasyMapGenerator) to share your creations, discuss the Generator, suggest ideas and get the most recent updates.
+## 本分支做了什么
 
-Contact me via [email](mailto:azgaar.fmg@yandex.com) if you have non-public suggestions. For bug reports please use [GitHub issues](https://github.com/Azgaar/Fantasy-Map-Generator/issues) or _#fmg-bugs_ channel on Discord. If you are facing performance issues, please read [the tips](https://github.com/Azgaar/Fantasy-Map-Generator/wiki/Tips#performance-tips).
+当前中文化工作主要覆盖这些方向：
 
-You can support the project on [Patreon](https://www.patreon.com/azgaar).
+- **中文界面**：菜单、按钮、工具提示、弹窗、编辑器、导出和保存流程等 UI 文案已接入简体中文运行时字典。
+- **中文地图视觉**：地图上的国家、城镇、路线等 SVG 标签会在中文模式下自动转写或翻译，减少英文专名混杂。
+- **术语统一**：为地理、气候、政体、宗教、军事、纹章等领域维护术语表，尽量避免同一个概念在不同面板里有多种译法。
+- **动态文本处理**：人口、外交关系、文化分布等运行时生成的提示语通过模板翻译，不再依赖固定样例。
+- **翻译流水线**：提供抽取、校验、回填流程，方便继续批量补全未翻译文本。
+- **中文启动器**：提供双击启动入口，方便不熟悉前端命令的用户本地预览中文地图。
 
-_Inspiration:_
+## 快速启动
 
-- Martin O'Leary's [_Generating fantasy maps_](https://mewo2.com/notes/terrain)
+推荐方式：双击仓库根目录下的 `start-map.cmd`。
 
-- Amit Patel's [_Polygonal Map Generation for Games_](http://www-cs-students.stanford.edu/~amitp/game-programming/polygon-map-generation)
+它会启动本地开发服务器，并打开中文页面：
 
-- Scott Turner's [_Here Dragons Abound_](https://heredragonsabound.blogspot.com)
+```text
+http://localhost:5173/Fantasy-Map-Generator/?locale=zh-CN
+```
 
-## Contribution
+也可以用命令启动：
 
-Pull requests are highly welcomed. The codebase is messy and I will appreciate if you start with minor changes. Check out the [data model](https://github.com/Azgaar/Fantasy-Map-Generator/wiki/Data-model) before contributing.
+```bash
+npm install
+npm run dev:zh
+```
 
-The codebase is gradually transitioning from **vanilla JavaScript to TypeScript** while maintaining compatibility with the existing generation pipeline and old `.map` user files.
+如果只想启动原始开发服务器：
 
-The expected **future** architecture is based on a separation between **world data**, **procedural generation**, **interactive editing**, and **rendering**. The application is conceptually divided into four main layers: world data and styles (state), generators (model), editors (controllers), renderers (view).
+```bash
+npm run dev
+```
 
-Flow:
-settings → generators → world data → renderer
-UI → editors → world data → renderer.
+## 切换语言
 
-The data layer must contain no logic and no rendering code. Generators implement the procedural world simulation. Editors implement interactive editing tools used by the user. They perform controlled mutations of the world state. Editors can be viewed as interactive generators. The renderer converts the world state into SVG or WebGl graphics. Renderer must be pure visualization step and not modify world data.
+中文模式地址带有：
+
+```text
+?locale=zh-CN
+```
+
+去掉这个参数，或改成 `?locale=en`，即可回到英文原版界面。页面右下角也有语言切换按钮。
+
+## 翻译工作流
+
+翻译中转目录在 `i18n-translation/`。常用命令：
+
+| 任务 | 命令 |
+|---|---|
+| 抽取待翻译文本 | `npm run i18n:extract` |
+| 校验回收译文 | `npm run i18n:validate` |
+| 回填译文到应用 | `npm run i18n:merge` |
+| 同步术语表 | `npm run i18n:terms` |
+
+更详细的翻译规则、术语要求和 AI 批量翻译提示词见：
+
+- `i18n-translation/README.md`
+- `i18n-translation/TRANSLATION_GUIDE.md`
+- `i18n-translation/termbase.json`
+
+## 当前状态
+
+这个分支仍在持续打磨中。主要界面和首屏地图已经可以中文使用，但仍可能看到：
+
+- 少量英文品牌名、文件格式名或链接名，这些通常会保留原文；
+- 部分深层编辑器、动态弹窗或旧样例文本仍待补译；
+- 随机生成的奇幻专名偶尔不够自然，需要继续优化词根和音译规则。
+
+欢迎继续反馈具体页面、按钮、弹窗或地图标签中的不自然译法。最好附上截图、原文或复现步骤。
+
+## 面向开发者
+
+本项目仍沿用上游架构，正在从 vanilla JavaScript 逐步迁移到 TypeScript。当前代码大体分为：
+
+- world data / styles：地图数据和样式状态；
+- generators：程序化世界生成；
+- editors / controllers：交互式编辑器；
+- renderers：SVG、WebGL 等视觉渲染。
+
+中文化逻辑主要集中在：
+
+- `public/i18n/i18n.js`
+- `public/i18n/locales/zh-CN/`
+- `i18n-translation/`
+- `scripts/i18n-*.mjs`
+
+## License
+
+本分支继承原项目的 MIT License。请同时尊重并保留原项目作者与社区的署名、许可证和相关链接。
