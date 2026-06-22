@@ -413,6 +413,7 @@ async function parseLoadedData(data, mapVersion) {
       // data[28] had deprecated cells.crossroad
       pack.cells.routes = data[36] ? JSON.parse(data[36]) : {};
       pack.ice = data[39] ? JSON.parse(data[39]) : [];
+      worldbuilding = data[40] ? JSON.parse(data[40]) : {};
 
       if (data[31]) {
         const namesDL = data[31].split("/");

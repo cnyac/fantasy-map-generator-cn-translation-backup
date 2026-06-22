@@ -2146,6 +2146,9 @@
               States
             </button>
             <button id="editUnitsButton" data-tip="Click to open Units Editor" data-shortcut="Shift + Q">Units</button>
+            <button id="worldbuildingManagerButton" data-tip="打开世界观管理器">
+              世界观
+            </button>
             <button id="editZonesButton" data-tip="Click to open Zones Editor" data-shortcut="Shift + Z">Zones</button>
           </div>
 
@@ -5704,6 +5707,71 @@
         </div>
       </div>
 
+      <div id="worldbuildingManager" class="dialog stable" style="display: none">
+        <div id="worldbuildingTop">
+          <button data-type="states" class="worldbuildingTab pressed">国家</button>
+          <button data-type="burgs" class="worldbuildingTab">城镇</button>
+          <button data-type="cultures" class="worldbuildingTab">文化</button>
+          <button data-type="religions" class="worldbuildingTab">宗教</button>
+          <input
+            id="worldbuildingSearch"
+            data-tip="按名称、标签、状态、概要或笔记搜索"
+            type="search"
+            placeholder="搜索"
+          />
+          <button id="worldbuildingRefresh" data-tip="刷新管理器" class="icon-cw"></button>
+          <button id="worldbuildingExport" data-tip="导出世界观 JSON 数据" class="icon-download"></button>
+        </div>
+
+        <div id="worldbuildingBulk">
+          <span>已选：<b id="worldbuildingSelectedCount">0</b></span>
+          <input id="worldbuildingBulkTags" data-tip="为所选条目追加标签，多个标签用逗号分隔" placeholder="标签" />
+          <select id="worldbuildingBulkStatus" data-tip="设置所选条目的状态">
+            <option value="">状态</option>
+            <option value="Draft">草稿</option>
+            <option value="Ready">待定稿</option>
+            <option value="Canon">正史</option>
+            <option value="Needs work">需补完</option>
+          </select>
+          <button id="worldbuildingBulkApply" data-tip="应用标签和状态到所选条目" class="icon-check"></button>
+        </div>
+
+        <div id="worldbuildingContent">
+          <div id="worldbuildingList">
+            <div id="worldbuildingHeader" class="header">
+              <div data-tip="选择条目用于批量编辑">选</div>
+              <div>名称</div>
+              <div>背景</div>
+              <div>状态</div>
+              <div>标签</div>
+              <div>进度</div>
+            </div>
+            <div id="worldbuildingRows" class="table"></div>
+            <div id="worldbuildingFooter" class="totalLine"></div>
+          </div>
+
+          <div id="worldbuildingDetails">
+            <div id="worldbuildingEmpty" class="italic">选择一个条目来编辑世界观资料</div>
+            <div id="worldbuildingForm" style="display: none">
+              <div>
+                <b id="worldbuildingEntityName"></b>
+                <span id="worldbuildingEntityMeta" class="italic"></span>
+              </div>
+              <div>
+                <label>状态：<select id="worldbuildingStatus"></select></label>
+                <button id="worldbuildingLocate" data-tip="在地图上定位该条目" class="icon-target"></button>
+                <button id="worldbuildingOpenNotes" data-tip="打开关联笔记条目" class="icon-edit"></button>
+              </div>
+              <label>标签：<input id="worldbuildingTags" data-field="tags" placeholder="多个标签用逗号分隔" /></label>
+              <label>概要：<textarea id="worldbuildingSummary" data-field="summary"></textarea></label>
+              <label id="worldbuildingFieldALabel"><span></span><textarea id="worldbuildingFieldA" data-field=""></textarea></label>
+              <label id="worldbuildingFieldBLabel"><span></span><textarea id="worldbuildingFieldB" data-field=""></textarea></label>
+              <label>笔记：<textarea id="worldbuildingNotes" data-field="notes"></textarea></label>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div id="styleSaver" class="dialog stable textual" style="display: none">
         <div id="styleSaverHeader" style="padding: 2px 0">
           <span>Preset name:</span>
@@ -8541,6 +8609,7 @@
     <script defer src="modules/ui/burg-editor.js?v=1.120.5"></script>
     <script defer src="modules/ui/units-editor.js?v=1.120.5"></script>
     <script defer src="modules/ui/notes-editor.js?v=1.120.5"></script>
+    <script defer src="modules/ui/worldbuilding-manager.js?v=1.0.0"></script>
     <script defer src="modules/ui/ai-generator.js?v=1.120.5"></script>
     <script defer src="modules/ui/diplomacy-editor.js?v=1.120.5"></script>
     <script defer src="modules/ui/zones-editor.js?v=1.120.5"></script>
@@ -8563,7 +8632,7 @@
     <script defer src="modules/io/load.js?v=1.120.5"></script>
     <script defer src="modules/io/cloud.js?v=1.114.0"></script>
     <script defer src="modules/io/export.js?v=1.120.5"></script>
-    <script defer src="i18n/i18n.js?v=0.1.0"></script>
+    <script defer src="i18n/i18n.js?v=0.1.1"></script>
     <div id="tourPromptButton" style="display: none" data-tip="Take an interactive tour of the map generator">
       <button type="button" aria-label="Launch UI Tour">
         <svg preserveAspectRatio="xMidYMid" viewBox="0 0 58 52" height="30px" width="30px">

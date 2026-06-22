@@ -120,9 +120,15 @@ function showMapTooltip(point, e, i, g) {
   const group = path[path.length - 7].id;
   const subgroup = path[path.length - 8].id;
   const land = pack.cells.h[i] >= 20;
+  const localizeName = name => window.FMGi18n?.localizeGeneratedName?.(name) || name;
+  const localizeRoute = name => window.FMGi18n?.localizeGeneratedName?.(name, "route") || name;
+  const burgGroups = {capital: "首都", city: "城市", town: "城镇", village: "村庄", port: "港口", generic: "城镇"};
+  const lakeGroups = {freshwater: "湖", salt: "咸水湖", sinkhole: "陷穴湖", frozen: "冰湖", lava: "熔岩湖", dry: "干湖"};
+  const emblemTypes = {burg: "城镇", province: "省份", state: "国家"};
+  const riverTypes = {River: "河", Creek: "溪", Brook: "溪流", Stream: "溪流"};
 
   // specific elements
-  if (group === "armies") return tip(e.target.parentNode.dataset.name + ". Click to edit");
+  if (group === "armies") return tip(`${e.target.parentNode.dataset.name}。点击编辑`);
 
   if (group === "emblems" && e.target.tagName === "use") {
     const parent = e.target.parentNode;
@@ -138,16 +144,16 @@ function showMapTooltip(point, e, i, g) {
     d3.select(e.target).raise();
     d3.select(parent).raise();
 
-    const name = g[i].fullName || g[i].name;
-    tip(`${name} ${type} emblem. Click to edit. Hold Shift to show associated area or place`);
+    const name = localizeName(g[i].fullName || g[i].name);
+    tip(`${name}${emblemTypes[type] || type}徽记。点击编辑。按住 Shift 可显示关联区域或地点`);
     return;
   }
 
   if (group === "rivers") {
     const river = +e.target.id.slice(5);
     const r = pack.rivers.find(r => r.i === river);
-    const name = r ? r.name + " " + r.type : "";
-    tip(name + ". Click to edit");
+    const name = r ? `${localizeName(r.name)}${riverTypes[r.type] || r.type}` : "";
+    tip(name ? `${name}。点击编辑` : "点击编辑");
     if (riversOverview?.offsetParent) highlightEditorLine(riversOverview, river, 5000);
     return;
   }
@@ -156,27 +162,28 @@ function showMapTooltip(point, e, i, g) {
     const routeId = +e.target.id.slice(5);
     const route = pack.routes.find(route => route.i === routeId);
     if (route) {
-      if (route.name) return tip(`${route.name}. Click to edit the Route`);
-      return tip("Click to edit the Route");
+      if (route.name) return tip(`${localizeRoute(route.name)}。点击编辑路线`);
+      return tip("点击编辑路线");
     }
   }
 
-  if (group === "terrain") return tip("Click to edit the Relief Icon");
+  if (group === "terrain") return tip("点击编辑地形图标");
 
   if (subgroup === "burgLabels" || subgroup === "burgIcons") {
     const burgId = +path[path.length - 10].dataset.id;
     if (burgId) {
       const burg = pack.burgs[burgId];
       const population = si(burg.population * populationRate * urbanization);
-      tip(`${burg.name} ${burg.group}. Population: ${population}. Click to edit`);
+      const groupName = burgGroups[burg.group] || burg.group;
+      tip(`${localizeName(burg.name)}${groupName}。人口：${population}。点击编辑`);
       if (burgsOverview?.offsetParent) highlightEditorLine(burgsOverview, burgId, 5000);
       return;
     }
   }
 
-  if (group === "labels") return tip("Click to edit the Label");
+  if (group === "labels") return tip("点击编辑标注");
 
-  if (group === "markers") return tip("Click to edit the Marker. Hold Shift to not close the assosiated note");
+  if (group === "markers") return tip("点击编辑标记。按住 Shift 可保持关联笔记打开");
 
   if (group === "ruler") {
     const tag = e.target.tagName;
@@ -191,18 +198,18 @@ function showMapTooltip(point, e, i, g) {
     if (tag === "text") return tip("Drag to move, click to remove the measurer");
   }
 
-  if (subgroup === "burgIcons") return tip("Click to edit the Burg");
+  if (subgroup === "burgIcons") return tip("点击编辑城镇");
 
-  if (subgroup === "burgLabels") return tip("Click to edit the Burg");
+  if (subgroup === "burgLabels") return tip("点击编辑城镇");
 
   if (group === "lakes" && !land) {
     const lakeId = +e.target.dataset.f;
     const name = pack.features[lakeId]?.name;
-    const fullName = subgroup === "freshwater" ? name : name + " " + subgroup;
-    tip(`${fullName} lake. Click to edit`);
+    const lakeType = lakeGroups[subgroup] || "湖";
+    tip(`${localizeName(name)}${lakeType}。点击编辑`);
     return;
   }
-  if (group === "coastline") return tip("Click to edit the coastline");
+  if (group === "coastline") return tip("点击编辑海岸线");
 
   if (group === "zones") {
     const element = path[path.length - 8];
@@ -213,7 +220,7 @@ function showMapTooltip(point, e, i, g) {
     return;
   }
 
-  if (group === "ice") return tip("Click to edit the Ice");
+  if (group === "ice") return tip("点击编辑冰层");
 
   // covering elements
   if (layerIsOn("togglePrecipitation") && land) tip("Annual Precipitation: " + getFriendlyPrecipitation(i));

@@ -1197,6 +1197,8 @@
 
   window.FMGi18n = {
     t,
+    localizeGeneratedName,
+    translateNamePhrase,
     get locale() {
       return state.locale;
     },
