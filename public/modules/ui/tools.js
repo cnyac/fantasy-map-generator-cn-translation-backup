@@ -20,6 +20,7 @@ toolsContent.addEventListener("click", function (event) {
   else if (button === "editNamesBaseButton") NamesbaseEditor.open();
   else if (button === "editUnitsButton") editUnits();
   else if (button === "editNotesButton") editNotes();
+  else if (button === "worldbuildingManagerButton") openWorldbuildingManager();
   else if (button === "editZonesButton") editZones();
   else if (button === "overviewChartsButton") overviewCharts();
   else if (button === "overviewBurgsButton") overviewBurgs();

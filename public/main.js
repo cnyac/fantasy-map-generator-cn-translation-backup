@@ -142,6 +142,7 @@ let mapHistory = [];
 let elSelected;
 let modules = {};
 let notes = [];
+let worldbuilding = {};
 let rulers = new Rulers();
 let customization = 0;
 
@@ -1305,5 +1306,6 @@ function undraw() {
     .forEach(el => el.remove());
   ensureEl("coas").innerHTML = ""; // remove auto-generated emblems
   notes = [];
+  worldbuilding = {};
   unfog();
 }
